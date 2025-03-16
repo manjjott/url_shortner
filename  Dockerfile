@@ -1,0 +1,15 @@
+# Use Go as the base image
+FROM golang:1.19-alpine
+
+# Set the working directory
+WORKDIR /url-shortner
+
+# Copy the entire project inside the container
+COPY . .
+
+# Download Go dependencies
+RUN go mod tidy
+
+# Run the application
+CMD ["go", "run", "."]
+

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo
+    container_name: mongo-container
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis
+    container_name: redis-container
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  app:
+    build: ./app
+    container_name: url-shortener
+    depends_on:
+      - mongo
+      - redis
+    ports:
+      - "8080:8080"
+    environment:
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DB: ${MONGO_DB}
+      REDIS_URL: ${REDIS_URL}
+      PORT: ${PORT}
+    volumes:
+      - ./app:/app
+    working_dir: /app
+    command: ["go", "run", "main.go"]
+
+volumes:
+  mongo_data:
+  redis_data:

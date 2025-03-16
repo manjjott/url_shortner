@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type URL struct {
@@ -25,11 +26,23 @@ func ShortenURL(c *gin.Context) {
         return
     }
 
+	ctx := context.Background()
+	var existingEntry bson.M
+    err := urlCollection.FindOne(ctx, bson.M{"long_url": requestBody.LongURL}).Decode(&existingEntry)
+	if err == nil {
+        existingShortURL := "http://localhost:8080/" + existingEntry["short_url"].(string)
+        c.JSON(http.StatusOK, gin.H{"short_url": existingShortURL})
+        return
+    } else if err != mongo.ErrNoDocuments {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+        return
+    }
+
     shortCode := uuid.New().String()[:6]
     shortURL := "http://localhost:8080/" + shortCode
 
 
-    _, err := urlCollection.InsertOne(context.Background(), bson.M{
+    _, err = urlCollection.InsertOne(context.Background(), bson.M{
         "short_url":  shortCode,
         "long_url":   requestBody.LongURL,
         "created_at": time.Now(),
@@ -40,7 +53,7 @@ func ShortenURL(c *gin.Context) {
     }
 
 	// Store in Redis
-	ctx := context.Background()
+	ctx = context.Background()
 	err = redisClient.Set(ctx,shortCode,requestBody.LongURL, 24*time.Hour).Err()
 	if err != nil {
 		log.Println("Error setting the redis key", err)
